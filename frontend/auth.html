@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sign In — Cloud IAM Platform</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #030712; }
+
+    .bg-grid {
+      background-image:
+        linear-gradient(rgba(59,130,246,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59,130,246,.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+    .blob {
+      position: fixed; border-radius: 50%; filter: blur(120px); opacity: .15; pointer-events: none;
+    }
+
+    /* Tab underline indicator */
+    .tab-active {
+      color: #60a5fa;
+      border-bottom: 2px solid #3b82f6;
+    }
+
+    /* Password strength bars */
+    .strength-bar {
+      height: 3px; border-radius: 2px; flex: 1;
+      background: #1f2937; transition: background .3s;
+    }
+    .strength-bar.active-1 { background: #ef4444; }
+    .strength-bar.active-2 { background: #f59e0b; }
+    .strength-bar.active-3 { background: #10b981; }
+    .strength-bar.active-4 { background: #3b82f6; }
+
+    input:-webkit-autofill {
+      -webkit-box-shadow: 0 0 0 30px #111827 inset !important;
+      -webkit-text-fill-color: #f9fafb !important;
+    }
+  </style>
+</head>
+<body class="bg-grid min-h-screen flex items-center justify-center px-4">
+
+  <!-- Background blobs -->
+  <div class="blob w-96 h-96 bg-blue-600 top-0 left-0"></div>
+  <div class="blob w-80 h-80 bg-purple-600 bottom-0 right-0"></div>
+
+  <!-- Card -->
+  <div class="relative z-10 w-full max-w-md">
+
+    <!-- Logo -->
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-600/20 border border-blue-500/30 mb-4">
+        <svg class="w-7 h-7 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+        </svg>
+      </div>
+      <h1 class="text-2xl font-bold text-white">Cloud IAM Platform</h1>
+      <p class="text-gray-400 text-sm mt-1">Identity & Access Management</p>
+    </div>
+
+    <!-- Auth card -->
+    <div class="bg-gray-900/80 backdrop-blur border border-gray-700/50 rounded-2xl p-8 shadow-2xl">
+
+      <!-- Tabs -->
+      <div class="flex border-b border-gray-700 mb-6">
+        <button id="tab-login" onclick="switchTab('login')"
+          class="tab-active flex-1 py-2 text-sm font-medium text-center transition-colors">
+          Sign In
+        </button>
+        <button id="tab-register" onclick="switchTab('register')"
+          class="flex-1 py-2 text-sm font-medium text-center text-gray-400 hover:text-gray-200 transition-colors">
+          Register
+        </button>
+      </div>
+
+      <!-- Error banner -->
+      <div id="error-banner" class="hidden mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm"></div>
+
+      <!-- ── LOGIN FORM ── -->
+      <div id="form-login">
+        <form onsubmit="doLogin(event)" class="space-y-4">
+          <div>
+            <label class="block text-sm text-gray-400 mb-1">Email</label>
+            <input id="login-email" type="email" required autocomplete="email"
+              class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
+              placeholder="you@example.com"/>
+          </div>
+          <div>
+            <label class="block text-sm text-gray-400 mb-1">Password</label>
+            <div class="relative">
+              <input id="login-password" type="password" required autocomplete="current-password"
+                class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 pr-10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
+                placeholder="••••••••"/>
+              <button type="button" onclick="togglePwd('login-password', this)"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <button type="submit" id="login-btn"
+            class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-lg transition-colors">
+            Sign In
+          </button>
+        </form>
+
+        <!-- Demo accounts -->
+        <div class="mt-5 pt-5 border-t border-gray-700/50">
+          <p class="text-xs text-gray-500 text-center mb-3">Demo accounts</p>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="fill('admin@demo.com','Admin@123')"
+              class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg transition">
+              Admin
+            </button>
+            <button onclick="fill('user1@demo.com','User@123')"
+              class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg transition">
+              Normal User
+            </button>
+            <button onclick="fill('user2@demo.com','User@123')"
+              class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg transition">
+              Power User
+            </button>
+            <button onclick="fill('svc@demo.com','Svc@123')"
+              class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg transition">
+              Service Account
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── REGISTER FORM ── -->
+      <div id="form-register" class="hidden">
+        <form onsubmit="doRegister(event)" class="space-y-4">
+          <div>
+            <label class="block text-sm text-gray-400 mb-1">Email</label>
+            <input id="reg-email" type="email" required autocomplete="email"
+              class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
+              placeholder="you@example.com"/>
+          </div>
+          <div>
+            <label class="block text-sm text-gray-400 mb-1">Password</label>
+            <div class="relative">
+              <input id="reg-password" type="password" required autocomplete="new-password"
+                oninput="updateStrength(this.value)"
+                class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 pr-10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
+                placeholder="Min 8 characters"/>
+              <button type="button" onclick="togglePwd('reg-password', this)"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+              </button>
+            </div>
+            <!-- Strength bars -->
+            <div class="flex gap-1 mt-2">
+              <div class="strength-bar" id="sb1"></div>
+              <div class="strength-bar" id="sb2"></div>
+              <div class="strength-bar" id="sb3"></div>
+              <div class="strength-bar" id="sb4"></div>
+            </div>
+            <p class="text-xs text-gray-500 mt-1" id="strength-label"></p>
+          </div>
+          <div>
+            <label class="block text-sm text-gray-400 mb-1">Confirm Password</label>
+            <input id="reg-confirm" type="password" required autocomplete="new-password"
+              class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
+              placeholder="Repeat password"/>
+          </div>
+          <button type="submit" id="reg-btn"
+            class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-lg transition-colors">
+            Create Account
+          </button>
+        </form>
+      </div>
+
+    </div>
+
+    <p class="text-center text-gray-600 text-xs mt-6">
+      Passwords stored with bcrypt · JWT session tokens
+    </p>
+  </div>
+
+  <script>
+    // ── Redirect if already logged in ──
+    if (localStorage.getItem('iam_token')) window.location.replace('/');
+
+    // ── Tab switcher ──
+    function switchTab(tab) {
+      const isLogin = tab === 'login';
+      document.getElementById('form-login').classList.toggle('hidden', !isLogin);
+      document.getElementById('form-register').classList.toggle('hidden', isLogin);
+      document.getElementById('tab-login').className =
+        (isLogin ? 'tab-active ' : '') +
+        'flex-1 py-2 text-sm font-medium text-center transition-colors' +
+        (isLogin ? '' : ' text-gray-400 hover:text-gray-200');
+      document.getElementById('tab-register').className =
+        (!isLogin ? 'tab-active ' : '') +
+        'flex-1 py-2 text-sm font-medium text-center transition-colors' +
+        (!isLogin ? '' : ' text-gray-400 hover:text-gray-200');
+      clearError();
+    }
+
+    // ── Show/hide password ──
+    function togglePwd(id, btn) {
+      const inp = document.getElementById(id);
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+    }
+
+    // ── Demo quick-fill ──
+    function fill(email, pwd) {
+      document.getElementById('login-email').value = email;
+      document.getElementById('login-password').value = pwd;
+    }
+
+    // ── Error display ──
+    function showError(msg) {
+      const el = document.getElementById('error-banner');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+    function clearError() {
+      document.getElementById('error-banner').classList.add('hidden');
+    }
+
+    // ── Password strength ──
+    function updateStrength(val) {
+      let score = 0;
+      if (val.length >= 8) score++;
+      if (/[A-Z]/.test(val)) score++;
+      if (/[0-9]/.test(val)) score++;
+      if (/[^A-Za-z0-9]/.test(val)) score++;
+
+      const bars = ['sb1','sb2','sb3','sb4'];
+      const labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+      bars.forEach((id, i) => {
+        const el = document.getElementById(id);
+        el.className = 'strength-bar' + (i < score ? ` active-${score}` : '');
+      });
+      document.getElementById('strength-label').textContent = labels[score] || '';
+    }
+
+    // ── Commit auth tokens ──
+    function commitAuth(data) {
+      localStorage.setItem('iam_token', data.access_token);
+      localStorage.setItem('iam_refresh', data.refresh_token);
+      localStorage.setItem('iam_user', JSON.stringify({
+        email: data.user_email,
+        role: data.user_role,
+      }));
+      window.location.replace('/');
+    }
+
+    // ── Login ──
+    async function doLogin(e) {
+      e.preventDefault();
+      clearError();
+      const btn = document.getElementById('login-btn');
+      btn.disabled = true;
+      btn.textContent = 'Signing in…';
+      try {
+        const res = await fetch('/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: document.getElementById('login-email').value.trim(),
+            password: document.getElementById('login-password').value,
+          }),
+        });
+        const body = await res.json();
+        if (!res.ok || !body.success) {
+          showError(body.detail || body.error || 'Login failed');
+          return;
+        }
+        commitAuth(body.data);
+      } catch (err) {
+        showError('Network error — is the server running?');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Sign In';
+      }
+    }
+
+    // ── Register ──
+    async function doRegister(e) {
+      e.preventDefault();
+      clearError();
+      const pwd = document.getElementById('reg-password').value;
+      const confirm = document.getElementById('reg-confirm').value;
+      if (pwd !== confirm) { showError('Passwords do not match'); return; }
+
+      const btn = document.getElementById('reg-btn');
+      btn.disabled = true;
+      btn.textContent = 'Creating account…';
+      try {
+        const res = await fetch('/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: document.getElementById('reg-email').value.trim(),
+            password: pwd,
+          }),
+        });
+        const body = await res.json();
+        if (!res.ok || !body.success) {
+          showError(body.detail || body.error || 'Registration failed');
+          return;
+        }
+        commitAuth(body.data);
+      } catch (err) {
+        showError('Network error — is the server running?');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+      }
+    }
+  </script>
+</body>
+</html>

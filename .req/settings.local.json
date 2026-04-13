@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -m venv venv)",
+      "Bash(source venv/bin/activate)",
+      "Bash(pip install:*)",
+      "Bash(python3 -c \":*)",
+      "Bash(python3 -c \"import main; print\\(''OK''\\)\")",
+      "Bash(kill %1)",
+      "Bash(python3 -c \"from passlib.context import CryptContext; c=CryptContext\\(schemes=[''bcrypt'']\\); print\\(c.hash\\(''test''\\)[:10]\\)\")",
+      "Bash(python3 -c \"import main; print\\(''imports OK''\\)\")",
+      "Bash(curl -s -X POST http://localhost:8000/auth/login -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"user1@demo.com\"\",\"\"password\"\":\"\"User@123\"\"}')",
+      "Bash(venv/bin/python3 -:*)"
+    ]
+  }
+}
