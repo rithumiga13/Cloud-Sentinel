@@ -184,6 +184,7 @@ from simulate.router import router as simulate_router
 from audit.router import router as audit_router
 from threats.router import router as threats_router
 from admin.router import router as admin_router
+from aws_integration.routes import router as aws_cspm_router
 
 app.include_router(auth_router)
 app.include_router(iam_router)
@@ -191,6 +192,7 @@ app.include_router(simulate_router)
 app.include_router(audit_router)
 app.include_router(threats_router)
 app.include_router(admin_router)
+app.include_router(aws_cspm_router)
 
 
 # ---------------------------------------------------------------------------
