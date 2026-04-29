@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: cloud-iam-cspm
+    env: docker
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: AWS_DEFAULT_REGION
+        value: us-east-1
