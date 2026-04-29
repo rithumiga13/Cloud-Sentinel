@@ -352,7 +352,7 @@
   <div class="grid grid-cols-12 gap-3">
     <div class="col-span-12 lg:col-span-4 bg-gray-900 border border-gray-800 rounded-xl p-4">
       <div class="flex items-center justify-between mb-3">
-        <span class="text-xs text-gray-500 uppercase tracking-widest">AWS Identity</span>
+        <span class="text-xs text-gray-500 uppercase tracking-widest">AWS Connection Status</span>
         <button onclick="loadAwsIdentity()" class="bg-gray-700 hover:bg-gray-600 text-white text-xs px-2.5 py-1 rounded transition">Validate</button>
       </div>
       <div id="awsIdentityCard" class="text-xs text-gray-400 space-y-1">No identity loaded.</div>
@@ -367,13 +367,21 @@
       </div>
     </div>
     <div class="col-span-12 lg:col-span-4 bg-gray-900 border border-gray-800 rounded-xl p-4">
-      <div class="text-xs text-gray-500 uppercase tracking-widest mb-3">Scan Controls</div>
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs text-gray-500 uppercase tracking-widest">CSPM Mode</span>
+        <span id="cspmModeBadge" class="bg-gray-800 border border-gray-700 text-gray-300 text-xs px-2 py-0.5 rounded">Not Configured</span>
+      </div>
+      <div id="cspmModeDescription" class="text-xs text-gray-400 mb-3">Validate AWS identity or load demo data.</div>
       <div class="grid grid-cols-2 gap-2">
         <button data-scan-button onclick="runCspmScan('full')" class="bg-blue-700 hover:bg-blue-600 text-white text-xs px-2 py-2 rounded transition">Full Scan</button>
         <button data-scan-button onclick="runCspmScan('iam')" class="bg-gray-700 hover:bg-gray-600 text-white text-xs px-2 py-2 rounded transition">IAM Scan</button>
         <button data-scan-button onclick="runCspmScan('s3')" class="bg-gray-700 hover:bg-gray-600 text-white text-xs px-2 py-2 rounded transition">S3 Scan</button>
         <button data-scan-button onclick="runCspmScan('ec2')" class="bg-gray-700 hover:bg-gray-600 text-white text-xs px-2 py-2 rounded transition">EC2 Scan</button>
         <button data-scan-button onclick="runCspmScan('cloudtrail')" class="col-span-2 bg-gray-700 hover:bg-gray-600 text-white text-xs px-2 py-2 rounded transition">CloudTrail Scan</button>
+      </div>
+      <div class="grid grid-cols-2 gap-2 mt-2">
+        <button onclick="loadDemoCspmData()" class="bg-emerald-700 hover:bg-emerald-600 text-white text-xs px-2 py-2 rounded transition">Load Demo CSPM Data</button>
+        <button id="clearDemoBtn" onclick="clearDemoCspmData()" class="bg-gray-800 hover:bg-gray-700 text-white text-xs px-2 py-2 rounded transition">Clear Demo Data</button>
       </div>
       <div id="cspmScanStatus" class="mt-3 text-xs text-gray-500">Idle.</div>
     </div>
@@ -384,6 +392,34 @@
         <div class="text-xs text-gray-500 mb-1">/ 100</div>
       </div>
       <div id="cspmSeveritySummary" class="grid grid-cols-4 gap-2 mt-4 text-xs"></div>
+    </div>
+  </div>
+  <div id="cspmSetupPanel" class="hidden bg-gray-900 border border-amber-900/60 rounded-xl p-4">
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <div class="text-amber-300 font-semibold">No AWS credentials detected</div>
+        <p class="text-xs text-gray-400 mt-1 max-w-4xl">This app reads AWS credentials from the server environment. Set read-only AWS environment variables or configure AWS_ROLE_ARN for AssumeRole mode. Do not type AWS secrets into the browser.</p>
+      </div>
+      <button onclick="loadDemoCspmData()" class="bg-emerald-700 hover:bg-emerald-600 text-white text-xs px-3 py-1.5 rounded shrink-0">Load Demo CSPM Data</button>
+    </div>
+    <div class="grid grid-cols-12 gap-3 mt-4 text-xs">
+      <div class="col-span-12 lg:col-span-6">
+        <div class="text-gray-500 uppercase tracking-widest mb-2">Local Setup</div>
+        <pre class="bg-gray-950 border border-gray-800 rounded p-3 text-gray-300 overflow-x-auto">export AWS_ACCESS_KEY_ID="..."
+export AWS_SECRET_ACCESS_KEY="..."
+export AWS_DEFAULT_REGION="ap-south-1"</pre>
+      </div>
+      <div class="col-span-12 lg:col-span-6">
+        <div class="text-gray-500 uppercase tracking-widest mb-2">Railway Variables</div>
+        <div class="grid grid-cols-2 gap-2 text-gray-300">
+          <span class="bg-gray-800 rounded px-2 py-1">AWS_ACCESS_KEY_ID</span>
+          <span class="bg-gray-800 rounded px-2 py-1">AWS_SECRET_ACCESS_KEY</span>
+          <span class="bg-gray-800 rounded px-2 py-1">AWS_DEFAULT_REGION</span>
+          <span class="bg-gray-800 rounded px-2 py-1">AWS_ROLE_ARN</span>
+          <span class="bg-gray-800 rounded px-2 py-1">AWS_EXTERNAL_ID</span>
+          <span class="bg-gray-800 rounded px-2 py-1">AWS_ROLE_SESSION_NAME</span>
+        </div>
+      </div>
     </div>
   </div>
   <div class="grid grid-cols-12 gap-3">
@@ -415,6 +451,16 @@
       <div id="cspmScanHistory" class="space-y-1.5 text-xs max-h-96 overflow-y-auto"></div>
     </div>
   </div>
+  <div class="grid grid-cols-12 gap-3">
+    <div class="col-span-12 lg:col-span-6 bg-gray-900 border border-gray-800 rounded-xl p-4">
+      <div class="text-xs text-gray-500 uppercase tracking-widest mb-3">Top Risky Services</div>
+      <div id="cspmTopServices" class="space-y-2 text-xs"></div>
+    </div>
+    <div class="col-span-12 lg:col-span-6 bg-gray-900 border border-gray-800 rounded-xl p-4">
+      <div class="text-xs text-gray-500 uppercase tracking-widest mb-3">Top Risky Resources</div>
+      <div id="cspmTopResources" class="space-y-2 text-xs"></div>
+    </div>
+  </div>
 </div>
 
 <div id="findingModal" class="hidden fixed inset-0 bg-black/70 z-50 items-center justify-center p-4">
@@ -430,6 +476,10 @@
     <div class="mt-4">
       <div class="text-xs text-gray-500 uppercase tracking-widest mb-2">Recommendation</div>
       <div id="findingModalRecommendation" class="text-xs text-green-300"></div>
+    </div>
+    <div class="mt-4">
+      <div class="text-xs text-gray-500 uppercase tracking-widest mb-2">Compliance Tags</div>
+      <div id="findingModalTags" class="flex flex-wrap gap-1 text-xs"></div>
     </div>
     <div class="mt-4">
       <div class="text-xs text-gray-500 uppercase tracking-widest mb-2">Evidence JSON</div>
@@ -492,6 +542,8 @@ let feedItems = [];
 let auditPage = 1;
 let selectedGroupId = null;
 let cspmFindings = [];
+let cspmCredentialStatus = null;
+let cspmMode = 'not_configured';
 
 const RESOURCE_ACTIONS = {
   s3:['list','get','put','delete'],
@@ -515,6 +567,7 @@ async function api(path, opts={}) {
 function isAdmin(){ return currentUser && currentUser.role === 'admin'; }
 function canViewCspm(){ return currentUser && ['admin','power_user','read_only'].includes(currentUser.role); }
 function canRunCspm(){ return currentUser && ['admin','power_user'].includes(currentUser.role); }
+function canClearDemo(){ return currentUser && currentUser.role === 'admin'; }
 
 // ── Role-based routing ──
 function routeByRole() {
@@ -869,12 +922,9 @@ function exportLogs(fmt){
 // ════════════════════════════════════════════════════════════
 
 async function initCspmDashboard(){
-  document.querySelectorAll('[data-scan-button]').forEach(b=>{
-    b.disabled = !canRunCspm();
-    b.classList.toggle('opacity-40', !canRunCspm());
-    b.classList.toggle('cursor-not-allowed', !canRunCspm());
-  });
-  await Promise.all([loadCspmRisk(), loadCspmFindings(), loadCspmScans()]);
+  document.getElementById('clearDemoBtn').classList.toggle('hidden', !canClearDemo());
+  updateScanButtons();
+  await Promise.all([loadAwsIdentity(), loadCspmRisk(), loadCspmFindings(), loadCspmScans()]);
 }
 
 async function loadAwsIdentity(){
@@ -884,20 +934,79 @@ async function loadAwsIdentity(){
   const r=await api(`/aws/identity?region=${encodeURIComponent(region)}`);
   if(!r||!r.success){el.innerHTML=`<span class="text-red-400">${(r&&(r.detail||r.error))||'AWS identity validation failed'}</span>`;return;}
   const d=r.data;
-  el.innerHTML=`
-    <div>Account: <span class="text-white">${d.account_id}</span></div>
-    <div>Region: <span class="text-white">${d.region}</span></div>
-    <div class="break-all">ARN: <span class="text-blue-300">${d.arn}</span></div>
-    <div>User ID: <span class="text-gray-300">${d.user_id}</span></div>`;
+  cspmCredentialStatus=d;
+  if(d.configured){
+    const assume=d.source==='assume_role';
+    cspmMode=assume?'assume_role':'real';
+    el.innerHTML=`
+      <div>Mode: <span class="${assume?'text-purple-300':'text-green-300'}">${assume?'AssumeRole Mode':'Real AWS Mode'}</span></div>
+      <div>Source: <span class="text-white">${d.source}</span></div>
+      <div>Account: <span class="text-white">${d.account_id}</span></div>
+      <div>Region: <span class="text-white">${d.region}</span></div>
+      <div class="break-all">ARN: <span class="text-blue-300">${d.arn}</span></div>
+      <div>User ID: <span class="text-gray-300">${d.user_id}</span></div>`;
+  } else {
+    cspmMode='not_configured';
+    el.innerHTML=`
+      <div class="text-amber-300 font-semibold">No AWS credentials detected</div>
+      <div>Source: <span class="text-gray-300">${d.source||'missing'}</span></div>
+      <div>Region: <span class="text-gray-300">${d.region}</span></div>
+      <div class="text-gray-500">${d.error_message||'AWS credentials were not found in the default credential chain.'}</div>`;
+  }
+  renderCspmMode();
+  updateScanButtons();
+}
+
+function renderCspmMode(){
+  const badge=document.getElementById('cspmModeBadge');
+  const desc=document.getElementById('cspmModeDescription');
+  const setup=document.getElementById('cspmSetupPanel');
+  const demoLoaded=cspmFindings.some(isDemoFinding);
+  if(demoLoaded && cspmMode!=='real' && cspmMode!=='assume_role') cspmMode='demo';
+  const modeMap={
+    real:['Real AWS Mode','bg-green-950 border-green-800 text-green-300','Using server-side read-only AWS credentials.'],
+    assume_role:['AssumeRole Mode','bg-purple-950 border-purple-800 text-purple-300','Using AWS_ROLE_ARN with temporary STS credentials.'],
+    demo:['Demo Mode — Sample AWS findings','bg-emerald-950 border-emerald-800 text-emerald-300','Showing realistic sample findings, not real AWS data.'],
+    not_configured:['Not Configured','bg-amber-950 border-amber-800 text-amber-300','Configure AWS credentials or load demo CSPM data.'],
+  };
+  const m=modeMap[cspmMode]||modeMap.not_configured;
+  badge.textContent=m[0]; badge.className=`border text-xs px-2 py-0.5 rounded ${m[1]}`;
+  desc.textContent=m[2];
+  setup.classList.toggle('hidden', cspmMode!=='not_configured');
+}
+
+function updateScanButtons(){
+  const realReady=canRunCspm() && cspmCredentialStatus && cspmCredentialStatus.configured;
+  document.querySelectorAll('[data-scan-button]').forEach(b=>{
+    b.disabled = !realReady;
+    b.classList.toggle('opacity-40', !realReady);
+    b.classList.toggle('cursor-not-allowed', !realReady);
+  });
 }
 
 async function runCspmScan(scanType){
   if(!canRunCspm())return;
+  if(!cspmCredentialStatus || !cspmCredentialStatus.configured){
+    await loadAwsIdentity();
+    if(!cspmCredentialStatus || !cspmCredentialStatus.configured){
+      document.getElementById('cspmScanStatus').className='mt-3 text-xs text-amber-400';
+      document.getElementById('cspmScanStatus').textContent='AWS credentials are not configured. Load demo data or set server environment variables.';
+      return;
+    }
+  }
   const region=document.getElementById('cspmRegion').value;
   const status=document.getElementById('cspmScanStatus');
   status.textContent=`Running ${scanType} scan in ${region}...`;
   const r=await api('/cspm/scan',{method:'POST',body:JSON.stringify({scan_type:scanType,region})});
   if(!r||!r.success){status.className='mt-3 text-xs text-red-400';status.textContent=(r&&(r.detail||r.error))||'Scan failed';return;}
+  if(r.data.status==='credentials_missing'){
+    cspmCredentialStatus=r.data.credential_status;
+    cspmMode='not_configured';
+    renderCspmMode(); updateScanButtons();
+    status.className='mt-3 text-xs text-amber-400';
+    status.textContent=r.data.message;
+    return;
+  }
   status.className='mt-3 text-xs text-green-400';
   status.textContent=`Completed scan #${r.data.scan.id}: ${r.data.finding_count} finding(s).`;
   renderCspmRisk(r.data.risk_score);
@@ -915,6 +1024,17 @@ function renderCspmRisk(risk){
   const colors={HIGH:'bg-red-950 border-red-800 text-red-300',MEDIUM:'bg-amber-950 border-amber-800 text-amber-300',LOW:'bg-blue-950 border-blue-800 text-blue-300',INFO:'bg-gray-800 border-gray-700 text-gray-300'};
   document.getElementById('cspmSeveritySummary').innerHTML=['HIGH','MEDIUM','LOW','INFO'].map(s=>`
     <div class="border rounded p-2 ${colors[s]}"><div class="font-bold">${counts[s]||0}</div><div class="text-[10px]">${s}</div></div>`).join('');
+  renderRiskList('cspmTopServices', risk.top_risky_services||[], 'service');
+  renderRiskList('cspmTopResources', risk.top_risky_resources||[], 'resource_id');
+}
+
+function renderRiskList(id, items, key){
+  const el=document.getElementById(id); if(!el)return;
+  el.innerHTML=items.length?items.map(i=>`
+    <div class="flex items-center justify-between bg-gray-800 border border-gray-700 rounded px-3 py-2">
+      <span class="text-gray-300 truncate" title="${i[key]}">${i[key]}</span>
+      <span class="text-amber-300 font-semibold">${i.score}</span>
+    </div>`).join(''):'<p class="text-gray-600">No risk data yet.</p>';
 }
 
 async function loadCspmFindings(){
@@ -926,7 +1046,13 @@ async function loadCspmFindings(){
   const r=await api('/cspm/findings'+(params.toString()?`?${params}`:''));
   if(!r||!r.success)return;
   cspmFindings=r.data;
+  if(cspmFindings.some(isDemoFinding) && (!cspmCredentialStatus || !cspmCredentialStatus.configured)) cspmMode='demo';
+  renderCspmMode();
   renderCspmFindings();
+}
+
+function isDemoFinding(f){
+  try{return JSON.parse(f.evidence_json||'{}').demo===true;}catch(e){return false;}
 }
 
 function renderCspmFindings(){
@@ -943,7 +1069,7 @@ function renderCspmFindings(){
         <button onclick="openFindingModal(${f.id})" class="text-blue-400 hover:text-blue-300 mr-2">Details</button>
         ${canChange&&f.status==='open'?`<button onclick="setFindingStatus(${f.id},'resolved')" class="text-green-400 hover:text-green-300">Resolve</button>`:''}
       </td>
-    </tr>`).join('') || '<tr><td class="py-4 text-gray-500" colspan="6">No findings.</td></tr>';
+    </tr>`).join('') || '<tr><td class="py-6 text-gray-500" colspan="6">No findings yet. Run a real scan or load demo data.</td></tr>';
 }
 
 function openFindingModal(id){
@@ -953,6 +1079,8 @@ function openFindingModal(id){
   document.getElementById('findingModalDescription').textContent=f.description;
   document.getElementById('findingModalRecommendation').textContent=f.recommendation;
   let evidence={}; try{evidence=JSON.parse(f.evidence_json||'{}');}catch(e){}
+  let tags=[]; try{tags=JSON.parse(f.compliance_tags_json||'[]');}catch(e){}
+  document.getElementById('findingModalTags').innerHTML=tags.map(t=>`<span class="bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-0.5">${t}</span>`).join('') || '<span class="text-gray-600">No tags</span>';
   document.getElementById('findingModalEvidence').textContent=JSON.stringify(evidence,null,2);
   document.getElementById('findingModal').classList.remove('hidden');
   document.getElementById('findingModal').classList.add('flex');
@@ -964,12 +1092,42 @@ async function setFindingStatus(id,status){
   if(r&&r.success){renderCspmRisk(r.data.risk_score);loadCspmFindings();}
 }
 
+async function loadDemoCspmData(){
+  if(!canRunCspm())return;
+  const region=document.getElementById('cspmRegion').value||'us-east-1';
+  const status=document.getElementById('cspmScanStatus');
+  status.className='mt-3 text-xs text-gray-500';
+  status.textContent='Loading demo CSPM findings...';
+  const r=await api(`/cspm/demo/load?region=${encodeURIComponent(region)}`,{method:'POST'});
+  if(!r||!r.success){status.className='mt-3 text-xs text-red-400';status.textContent=(r&&(r.detail||r.error))||'Could not load demo data';return;}
+  cspmMode='demo';
+  cspmFindings=r.data.findings||[];
+  renderCspmMode();
+  renderCspmRisk(r.data.risk_score);
+  renderCspmFindings();
+  await loadCspmScans();
+  status.className='mt-3 text-xs text-emerald-400';
+  status.textContent=`Demo Mode loaded: ${cspmFindings.length} sample finding(s).`;
+}
+
+async function clearDemoCspmData(){
+  if(!canClearDemo())return;
+  const r=await api('/cspm/demo/clear',{method:'DELETE'});
+  if(r&&r.success){
+    cspmMode=(cspmCredentialStatus&&cspmCredentialStatus.configured)?(cspmCredentialStatus.source==='assume_role'?'assume_role':'real'):'not_configured';
+    renderCspmRisk(r.data.risk_score);
+    await Promise.all([loadCspmFindings(), loadCspmScans()]);
+    document.getElementById('cspmScanStatus').className='mt-3 text-xs text-gray-400';
+    document.getElementById('cspmScanStatus').textContent='Demo CSPM data cleared.';
+  }
+}
+
 async function loadCspmScans(){
   const r=await api('/cspm/scans');
   if(!r||!r.success)return;
   document.getElementById('cspmScanHistory').innerHTML=r.data.map(s=>`
     <div class="bg-gray-800 border border-gray-700 rounded p-2">
-      <div class="flex items-center justify-between"><span class="text-white">#${s.id} ${s.scan_type}</span><span class="${s.status==='completed'?'text-green-400':s.status==='failed'?'text-red-400':'text-amber-400'}">${s.status}</span></div>
+      <div class="flex items-center justify-between"><span class="text-white">#${s.id} ${s.scan_type}</span><span class="${s.scan_type==='demo'?'text-emerald-400':s.status==='completed'?'text-green-400':s.status==='failed'?'text-red-400':'text-amber-400'}">${s.scan_type==='demo'?'demo':s.status}</span></div>
       <div class="text-gray-500 mt-0.5">${new Date(s.started_at).toLocaleString()} · ${s.finding_count} findings</div>
       <div class="text-gray-500">H:${s.high_count} M:${s.medium_count} L:${s.low_count}</div>
     </div>`).join('') || '<p class="text-gray-600">No scans yet.</p>';
@@ -984,6 +1142,7 @@ function onCspmEvent(message){
   const status=document.getElementById('cspmScanStatus');
   if(message.type==='cspm_scan_started'&&status)status.textContent='CSPM scan started...';
   if(message.type==='cspm_scan_completed'&&status){status.className='mt-3 text-xs text-green-400';status.textContent=`Scan completed with ${message.data.finding_count} finding(s).`;}
+  if(message.type==='cspm_demo_loaded'){cspmMode='demo';renderCspmMode();}
   if(message.type==='cspm_risk_updated')renderCspmRisk(message.data);
 }
 
