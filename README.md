@@ -139,6 +139,8 @@ Open **http://localhost:8000** — the dashboard loads automatically.
 | POST | `/cspm/findings/{finding_id}/status` | Mark finding `open`, `resolved`, or `ignored` |
 | GET | `/cspm/risk` | CSPM risk score |
 | GET | `/cspm/report?format=json\|csv` | Export CSPM findings |
+| POST | `/cspm/demo/load` | Load realistic sample CSPM findings |
+| DELETE | `/cspm/demo/clear` | Clear demo CSPM data only |
 
 Admin and Power User roles can run scans and change finding status. Read Only users can view CSPM scans, findings, risk, and reports.
 
@@ -200,19 +202,68 @@ curl "http://localhost:8000/cspm/findings?severity=HIGH&status=open" \
 
 ## AWS CSPM Setup
 
-The platform uses boto3's default credential chain. For local development, use one of:
+The platform now supports four clear operating modes:
+
+| Mode | Purpose |
+|---|---|
+| Simulation Mode | Existing Cloud IAM simulation, RBAC, audit, alerts, risk, and WebSocket workflows. |
+| Demo Mode | Loads realistic sample AWS CSPM findings without any AWS credentials. Best for portfolio walkthroughs. |
+| Real AWS Mode | Uses server-side read-only AWS credentials from boto3's default credential chain. |
+| AssumeRole Mode | Uses `AWS_ROLE_ARN` and optional `AWS_EXTERNAL_ID` to assume a read-only scanning role. |
+
+The app never asks users to type AWS secrets into the browser and never stores AWS secrets in the database. It stores only account identity, scan metadata, and findings.
+
+### Demo Mode
+
+Use this when presenting the platform without connecting a real AWS account:
+
+1. Start the app.
+2. Login as `admin@demo.com`.
+3. Open **AWS CSPM**.
+4. Click **Load Demo CSPM Data**.
+5. Review risk score, findings, recommendations, evidence JSON, and scan history.
+
+Demo findings are clearly labeled as sample data and can be cleared by an Admin.
+
+### Real AWS Mode
+
+The platform uses boto3's default credential chain. For local development, use read-only credentials:
 
 ```bash
-export AWS_PROFILE=my-readonly-profile
-export AWS_DEFAULT_REGION=us-east-1
-
-# or temporary environment credentials
-export AWS_ACCESS_KEY_ID=...
-export AWS_SECRET_ACCESS_KEY=...
-export AWS_SESSION_TOKEN=...
+export AWS_ACCESS_KEY_ID="..."
+export AWS_SECRET_ACCESS_KEY="..."
+export AWS_DEFAULT_REGION="ap-south-1"
 ```
 
-Do not paste AWS secret keys into the app. The database stores account identity, scan metadata, and findings only; it does not store AWS credentials.
+Then restart the app, validate identity in the AWS CSPM tab, and run a scan.
+
+### AssumeRole Mode
+
+Set these server-side variables when scanning a separate AWS account through STS:
+
+```bash
+export AWS_ROLE_ARN="arn:aws:iam::<account-id>:role/<read-only-role>"
+export AWS_EXTERNAL_ID="optional-external-id"
+export AWS_ROLE_SESSION_NAME="CloudIAMCSPMReadOnlySession"
+export AWS_DEFAULT_REGION="ap-south-1"
+```
+
+`sts:AssumeRole` is only required for this mode.
+
+### Railway Variables
+
+Set these in Railway service variables as needed:
+
+```text
+SECRET_KEY
+DATABASE_URL
+AWS_ACCESS_KEY_ID
+AWS_SECRET_ACCESS_KEY
+AWS_DEFAULT_REGION
+AWS_ROLE_ARN
+AWS_EXTERNAL_ID
+AWS_ROLE_SESSION_NAME
+```
 
 Minimum read-only IAM policy for scanning:
 
@@ -224,6 +275,7 @@ Minimum read-only IAM policy for scanning:
       "Effect": "Allow",
       "Action": [
         "sts:GetCallerIdentity",
+        "sts:AssumeRole",
         "iam:Get*",
         "iam:List*",
         "s3:Get*",
@@ -244,9 +296,15 @@ Minimum read-only IAM policy for scanning:
 Security limitations:
 
 - The scanner is read-only and reports findings only; it does not remediate resources.
+- Do not use admin AWS credentials. Use a dedicated read-only principal or role.
+- Prefer a sandbox/demo AWS account for portfolio testing.
+- Do not expose production AWS account metadata in public demos.
+- Do not type AWS secrets into the browser.
 - CSPM checks are intentionally conservative for a portfolio/demo project and should not replace a production CSPM, SIEM, or AWS Security Hub deployment.
 - CloudTrail `LookupEvents` is rate-limited by AWS and only covers recent management events.
 - Cross-account and organization-wide scanning require running the app with an appropriately scoped read-only role in each target account.
+
+Optional safe AWS lab resources are provided in `infra/aws-demo-lab/`. They create a private S3 bucket with missing hardening controls and an unattached security group with intentionally open ingress rules. Deploy only in a sandbox account and delete after testing.
 
 ---
 
