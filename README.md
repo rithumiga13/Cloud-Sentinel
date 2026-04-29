@@ -1,8 +1,8 @@
 # Cloud IAM Security Simulation Platform
 
-A full-stack, multi-user web application that simulates cloud IAM activity, detects threats in real time, and provides a complete audit trail. Covers all five IAM pillars: Authentication, Authorization, Audit, Administration, and Analysis.
+A full-stack, multi-user web application that simulates cloud IAM activity, detects threats in real time, provides a complete audit trail, and can run read-only AWS CSPM scans for IAM, S3, EC2 security groups, and CloudTrail.
 
-> **Education & research tool only — no real cloud provider is connected.**
+> **Portfolio, research, and demo tool only. AWS integration is read-only and does not create, modify, delete, or remediate cloud resources.**
 
 ---
 
@@ -46,6 +46,8 @@ Open **http://localhost:8000** — the dashboard loads automatically.
 | `DATABASE_URL` | `sqlite:///./cloud_iam.db` | SQLAlchemy database URL |
 | `SECRET_KEY` | `super-secret-dev-key-change-in-production` | JWT signing key — **change in production** |
 | `PORT` | `8000` | Server port (used by Procfile) |
+| `AWS_REGION` / `AWS_DEFAULT_REGION` | `us-east-1` | Default AWS region for CSPM scans |
+| AWS credential env vars | unset | Optional. You can use `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION_TOKEN`, but IAM role/profile credentials through boto3's default credential chain are preferred. |
 
 ---
 
@@ -125,6 +127,21 @@ Open **http://localhost:8000** — the dashboard loads automatically.
 | `ws://host/ws/events` | Audit events + security alerts |
 | `ws://host/ws/risk` | Risk score updates |
 
+### AWS CSPM — `/aws`, `/cspm`
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/aws/identity?region=us-east-1` | Validate current AWS identity through STS |
+| POST | `/cspm/scan` | Run read-only scan: `full`, `iam`, `s3`, `ec2`, or `cloudtrail` |
+| GET | `/cspm/scans` | List previous scans |
+| GET | `/cspm/scans/{scan_id}` | Scan metadata and findings |
+| GET | `/cspm/findings` | Filter findings by severity, service, status, or resource type |
+| POST | `/cspm/findings/{finding_id}/status` | Mark finding `open`, `resolved`, or `ignored` |
+| GET | `/cspm/risk` | CSPM risk score |
+| GET | `/cspm/report?format=json\|csv` | Export CSPM findings |
+
+Admin and Power User roles can run scans and change finding status. Read Only users can view CSPM scans, findings, risk, and reports.
+
 ---
 
 ## Example curl Commands
@@ -163,7 +180,73 @@ curl http://localhost:8000/admin/system/health \
 # Export audit log as CSV
 curl "http://localhost:8000/audit/export?format=csv" \
   -H "Authorization: Bearer $TOKEN" -o audit_logs.csv
+
+# Validate AWS identity
+curl "http://localhost:8000/aws/identity?region=us-east-1" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Run a full read-only CSPM scan
+curl -X POST http://localhost:8000/cspm/scan \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"scan_type":"full","region":"us-east-1"}'
+
+# List high-severity open findings
+curl "http://localhost:8000/cspm/findings?severity=HIGH&status=open" \
+  -H "Authorization: Bearer $TOKEN"
 ```
+
+---
+
+## AWS CSPM Setup
+
+The platform uses boto3's default credential chain. For local development, use one of:
+
+```bash
+export AWS_PROFILE=my-readonly-profile
+export AWS_DEFAULT_REGION=us-east-1
+
+# or temporary environment credentials
+export AWS_ACCESS_KEY_ID=...
+export AWS_SECRET_ACCESS_KEY=...
+export AWS_SESSION_TOKEN=...
+```
+
+Do not paste AWS secret keys into the app. The database stores account identity, scan metadata, and findings only; it does not store AWS credentials.
+
+Minimum read-only IAM policy for scanning:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "sts:GetCallerIdentity",
+        "iam:Get*",
+        "iam:List*",
+        "s3:Get*",
+        "s3:List*",
+        "ec2:Describe*",
+        "cloudtrail:DescribeTrails",
+        "cloudtrail:GetTrailStatus",
+        "cloudtrail:LookupEvents",
+        "cloudtrail:ListTrails",
+        "cloudtrail:GetEventSelectors"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+Security limitations:
+
+- The scanner is read-only and reports findings only; it does not remediate resources.
+- CSPM checks are intentionally conservative for a portfolio/demo project and should not replace a production CSPM, SIEM, or AWS Security Hub deployment.
+- CloudTrail `LookupEvents` is rate-limited by AWS and only covers recent management events.
+- Cross-account and organization-wide scanning require running the app with an appropriately scoped read-only role in each target account.
 
 ---
 
@@ -198,7 +281,9 @@ Cloud-IAM/
 ├── audit/               # Append-only log writer, export, compliance flags
 ├── threats/             # Rule engine (R1–R8), risk scoring, IAM analyzer
 ├── admin/               # User/session management, system health
+├── aws_integration/     # Read-only AWS identity, CSPM scanners, API routes
 ├── websocket/           # ConnectionManager broadcast helpers
+├── tests/               # Pytest scanner and RBAC coverage
 ├── frontend/index.html  # Single-file Tailwind dashboard
 ├── requirements.txt
 └── Procfile
