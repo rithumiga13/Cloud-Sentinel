@@ -1,0 +1,59 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Safe low-cost resources for Cloud IAM CSPM demo scans. Creates no EC2 instances and no public S3 buckets.
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC where the intentionally open, unattached demo security group will be created.
+
+Resources:
+  DemoPrivateBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Purpose
+          Value: CloudIAMCSPMDemo
+        - Key: DataClassification
+          Value: EmptyDemoBucket
+
+  DemoOpenSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Intentionally open demo security group for CSPM testing. Do not attach to instances.
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+          Description: Demo finding - SSH open to internet
+        - IpProtocol: tcp
+          FromPort: 3389
+          ToPort: 3389
+          CidrIp: 0.0.0.0/0
+          Description: Demo finding - RDP open to internet
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: 0.0.0.0/0
+          Description: Demo finding - PostgreSQL open to internet
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: Default outbound for unattached demo group
+      Tags:
+        - Key: Purpose
+          Value: CloudIAMCSPMDemo
+
+Outputs:
+  BucketName:
+    Description: Private demo S3 bucket name
+    Value: !Ref DemoPrivateBucket
+  SecurityGroupId:
+    Description: Unattached demo security group with intentionally open ingress
+    Value: !Ref DemoOpenSecurityGroup
