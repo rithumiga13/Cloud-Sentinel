@@ -47,6 +47,11 @@ class ConnectionManager:
         message = json.dumps({"type": "alert", "data": payload, "ts": datetime.utcnow().isoformat()})
         await self._broadcast(self._event_connections, message, self.disconnect_events)
 
+    async def broadcast_cspm(self, event_type: str, payload: dict[str, Any]) -> None:
+        """Broadcast AWS CSPM scan and finding events to dashboard clients."""
+        message = json.dumps({"type": event_type, "data": payload, "ts": datetime.utcnow().isoformat()})
+        await self._broadcast(self._event_connections, message, self.disconnect_events)
+
     async def broadcast_risk(self, score: float) -> None:
         """Broadcast a risk score update to all connected risk WebSocket clients."""
         message = json.dumps({"type": "risk_update", "score": score, "ts": datetime.utcnow().isoformat()})
