@@ -44,6 +44,7 @@
 <div id="adminTabs" class="hidden bg-gray-900 border-b border-gray-800 px-4 flex gap-0">
   <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-active px-4 py-2.5 text-xs font-semibold transition">Dashboard</button>
   <button onclick="switchTab('iam')" id="tab-iam" class="tab-inactive px-4 py-2.5 text-xs font-semibold transition">IAM Explorer</button>
+  <button onclick="switchTab('cspm')" id="tab-cspm" class="tab-inactive px-4 py-2.5 text-xs font-semibold transition">AWS CSPM</button>
   <button onclick="switchTab('audit')" id="tab-audit" class="tab-inactive px-4 py-2.5 text-xs font-semibold transition">Audit Logs</button>
 </div>
 
@@ -345,7 +346,100 @@
 </div>
 
 <!-- ════════════════════════════════════════════════════════════
-     TAB: AUDIT LOGS  (admin only)
+     TAB: AWS CSPM
+════════════════════════════════════════════════════════════ -->
+<div id="page-cspm" class="hidden max-w-screen-2xl mx-auto px-3 py-4 space-y-3">
+  <div class="grid grid-cols-12 gap-3">
+    <div class="col-span-12 lg:col-span-4 bg-gray-900 border border-gray-800 rounded-xl p-4">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs text-gray-500 uppercase tracking-widest">AWS Identity</span>
+        <button onclick="loadAwsIdentity()" class="bg-gray-700 hover:bg-gray-600 text-white text-xs px-2.5 py-1 rounded transition">Validate</button>
+      </div>
+      <div id="awsIdentityCard" class="text-xs text-gray-400 space-y-1">No identity loaded.</div>
+      <div class="mt-3">
+        <label class="text-xs text-gray-500 mb-1 block">Region</label>
+        <select id="cspmRegion" class="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-500">
+          <option value="us-east-1">us-east-1</option><option value="us-east-2">us-east-2</option>
+          <option value="us-west-1">us-west-1</option><option value="us-west-2">us-west-2</option>
+          <option value="ap-south-1">ap-south-1</option><option value="ap-southeast-1">ap-southeast-1</option>
+          <option value="eu-west-1">eu-west-1</option><option value="eu-central-1">eu-central-1</option>
+        </select>
+      </div>
+    </div>
+    <div class="col-span-12 lg:col-span-4 bg-gray-900 border border-gray-800 rounded-xl p-4">
+      <div class="text-xs text-gray-500 uppercase tracking-widest mb-3">Scan Controls</div>
+      <div class="grid grid-cols-2 gap-2">
+        <button data-scan-button onclick="runCspmScan('full')" class="bg-blue-700 hover:bg-blue-600 text-white text-xs px-2 py-2 rounded transition">Full Scan</button>
+        <button data-scan-button onclick="runCspmScan('iam')" class="bg-gray-700 hover:bg-gray-600 text-white text-xs px-2 py-2 rounded transition">IAM Scan</button>
+        <button data-scan-button onclick="runCspmScan('s3')" class="bg-gray-700 hover:bg-gray-600 text-white text-xs px-2 py-2 rounded transition">S3 Scan</button>
+        <button data-scan-button onclick="runCspmScan('ec2')" class="bg-gray-700 hover:bg-gray-600 text-white text-xs px-2 py-2 rounded transition">EC2 Scan</button>
+        <button data-scan-button onclick="runCspmScan('cloudtrail')" class="col-span-2 bg-gray-700 hover:bg-gray-600 text-white text-xs px-2 py-2 rounded transition">CloudTrail Scan</button>
+      </div>
+      <div id="cspmScanStatus" class="mt-3 text-xs text-gray-500">Idle.</div>
+    </div>
+    <div class="col-span-12 lg:col-span-4 bg-gray-900 border border-gray-800 rounded-xl p-4">
+      <div class="text-xs text-gray-500 uppercase tracking-widest mb-3">CSPM Risk</div>
+      <div class="flex items-end gap-3">
+        <div id="cspmRiskScore" class="text-4xl font-bold text-white">0</div>
+        <div class="text-xs text-gray-500 mb-1">/ 100</div>
+      </div>
+      <div id="cspmSeveritySummary" class="grid grid-cols-4 gap-2 mt-4 text-xs"></div>
+    </div>
+  </div>
+  <div class="grid grid-cols-12 gap-3">
+    <div class="col-span-12 lg:col-span-8 bg-gray-900 border border-gray-800 rounded-xl p-4">
+      <div class="flex items-center justify-between gap-2 flex-wrap mb-3">
+        <span class="text-xs text-gray-500 uppercase tracking-widest">Findings</span>
+        <div class="flex gap-2 flex-wrap">
+          <select id="cspmSeverityFilter" class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs"><option value="">Severity</option><option>HIGH</option><option>MEDIUM</option><option>LOW</option><option>INFO</option></select>
+          <select id="cspmServiceFilter" class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs"><option value="">Service</option><option>iam</option><option>s3</option><option>ec2</option><option>cloudtrail</option></select>
+          <select id="cspmStatusFilter" class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs"><option value="">Status</option><option>open</option><option>resolved</option><option>ignored</option></select>
+          <button onclick="loadCspmFindings()" class="bg-blue-700 hover:bg-blue-600 text-white text-xs px-2.5 py-1 rounded">Filter</button>
+          <button onclick="exportCspmReport('json')" class="bg-gray-700 hover:bg-gray-600 text-white text-xs px-2.5 py-1 rounded">Export JSON</button>
+          <button onclick="exportCspmReport('csv')" class="bg-gray-700 hover:bg-gray-600 text-white text-xs px-2.5 py-1 rounded">CSV</button>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs">
+          <thead><tr class="text-gray-500 border-b border-gray-800">
+            <th class="pb-2 text-left font-normal">Severity</th><th class="pb-2 text-left font-normal">Service</th>
+            <th class="pb-2 text-left font-normal">Resource</th><th class="pb-2 text-left font-normal">Finding</th>
+            <th class="pb-2 text-left font-normal">Status</th><th class="pb-2 text-left font-normal">Action</th>
+          </tr></thead>
+          <tbody id="cspmFindingsTable" class="divide-y divide-gray-800/50"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="col-span-12 lg:col-span-4 bg-gray-900 border border-gray-800 rounded-xl p-4">
+      <div class="text-xs text-gray-500 uppercase tracking-widest mb-3">Scan History</div>
+      <div id="cspmScanHistory" class="space-y-1.5 text-xs max-h-96 overflow-y-auto"></div>
+    </div>
+  </div>
+</div>
+
+<div id="findingModal" class="hidden fixed inset-0 bg-black/70 z-50 items-center justify-center p-4">
+  <div class="bg-gray-900 border border-gray-700 rounded-xl max-w-3xl w-full max-h-[85vh] overflow-y-auto p-4">
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <div id="findingModalTitle" class="text-white font-semibold"></div>
+        <div id="findingModalMeta" class="text-xs text-gray-500 mt-1"></div>
+      </div>
+      <button onclick="closeFindingModal()" class="text-gray-500 hover:text-white">x</button>
+    </div>
+    <div class="mt-4 text-xs text-gray-300" id="findingModalDescription"></div>
+    <div class="mt-4">
+      <div class="text-xs text-gray-500 uppercase tracking-widest mb-2">Recommendation</div>
+      <div id="findingModalRecommendation" class="text-xs text-green-300"></div>
+    </div>
+    <div class="mt-4">
+      <div class="text-xs text-gray-500 uppercase tracking-widest mb-2">Evidence JSON</div>
+      <pre id="findingModalEvidence" class="bg-gray-950 border border-gray-800 rounded p-3 text-xs text-gray-300 overflow-x-auto"></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     TAB: AUDIT LOGS
 ════════════════════════════════════════════════════════════ -->
 <div id="page-audit" class="hidden max-w-screen-2xl mx-auto px-3 py-4">
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
@@ -397,6 +491,7 @@ let activeAlerts = new Map();
 let feedItems = [];
 let auditPage = 1;
 let selectedGroupId = null;
+let cspmFindings = [];
 
 const RESOURCE_ACTIONS = {
   s3:['list','get','put','delete'],
@@ -418,6 +513,8 @@ async function api(path, opts={}) {
 }
 
 function isAdmin(){ return currentUser && currentUser.role === 'admin'; }
+function canViewCspm(){ return currentUser && ['admin','power_user','read_only'].includes(currentUser.role); }
+function canRunCspm(){ return currentUser && ['admin','power_user'].includes(currentUser.role); }
 
 // ── Role-based routing ──
 function routeByRole() {
@@ -425,6 +522,11 @@ function routeByRole() {
     document.getElementById('adminTabs').classList.remove('hidden');
     document.getElementById('page-dashboard').classList.remove('hidden');
     document.getElementById('page-user').classList.add('hidden');
+  } else if (canViewCspm()) {
+    document.getElementById('adminTabs').classList.remove('hidden');
+    document.getElementById('page-dashboard').classList.add('hidden');
+    document.getElementById('page-user').classList.add('hidden');
+    switchTab('cspm');
   } else {
     document.getElementById('adminTabs').classList.add('hidden');
     document.getElementById('page-dashboard').classList.add('hidden');
@@ -435,13 +537,16 @@ function routeByRole() {
 
 // ── Admin tabs ──
 function switchTab(name) {
-  ['dashboard','iam','audit'].forEach(t=>{
+  if (!isAdmin() && ['dashboard','iam','audit'].includes(name)) name = 'cspm';
+  ['dashboard','iam','cspm','audit'].forEach(t=>{
     document.getElementById('page-'+t).classList.toggle('hidden', t!==name);
     const btn = document.getElementById('tab-'+t);
     btn.className = (t===name?'tab-active':'tab-inactive')+' px-4 py-2.5 text-xs font-semibold transition';
+    if (!isAdmin() && ['dashboard','iam','audit'].includes(t)) btn.classList.add('hidden');
   });
   if (name==='iam') loadIAMExplorer();
   if (name==='audit') loadAuditLogs(1);
+  if (name==='cspm') initCspmDashboard();
 }
 
 // ── Auth ──
@@ -582,7 +687,7 @@ function connectWS(){
     const ws=new WebSocket(`${b}/ws/events`);
     ws.onopen=()=>setWsOk(true);
     ws.onclose=()=>{setWsOk(false);setTimeout(mkEvents,2000);};
-    ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==='audit_event')appendFeed(m.data);if(m.type==='alert')onAlert(m.data);};
+    ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==='audit_event')appendFeed(m.data);if(m.type==='alert')onAlert(m.data);if(m.type&&m.type.startsWith('cspm_'))onCspmEvent(m);};
   }
   function mkRisk(){
     const ws=new WebSocket(`${b}/ws/risk`);
@@ -757,6 +862,129 @@ function exportLogs(fmt){
       const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='audit.json';a.click();
     });
   }
+}
+
+// ════════════════════════════════════════════════════════════
+// AWS CSPM
+// ════════════════════════════════════════════════════════════
+
+async function initCspmDashboard(){
+  document.querySelectorAll('[data-scan-button]').forEach(b=>{
+    b.disabled = !canRunCspm();
+    b.classList.toggle('opacity-40', !canRunCspm());
+    b.classList.toggle('cursor-not-allowed', !canRunCspm());
+  });
+  await Promise.all([loadCspmRisk(), loadCspmFindings(), loadCspmScans()]);
+}
+
+async function loadAwsIdentity(){
+  const region=document.getElementById('cspmRegion').value;
+  const el=document.getElementById('awsIdentityCard');
+  el.innerHTML='<span class="text-gray-500">Validating credentials...</span>';
+  const r=await api(`/aws/identity?region=${encodeURIComponent(region)}`);
+  if(!r||!r.success){el.innerHTML=`<span class="text-red-400">${(r&&(r.detail||r.error))||'AWS identity validation failed'}</span>`;return;}
+  const d=r.data;
+  el.innerHTML=`
+    <div>Account: <span class="text-white">${d.account_id}</span></div>
+    <div>Region: <span class="text-white">${d.region}</span></div>
+    <div class="break-all">ARN: <span class="text-blue-300">${d.arn}</span></div>
+    <div>User ID: <span class="text-gray-300">${d.user_id}</span></div>`;
+}
+
+async function runCspmScan(scanType){
+  if(!canRunCspm())return;
+  const region=document.getElementById('cspmRegion').value;
+  const status=document.getElementById('cspmScanStatus');
+  status.textContent=`Running ${scanType} scan in ${region}...`;
+  const r=await api('/cspm/scan',{method:'POST',body:JSON.stringify({scan_type:scanType,region})});
+  if(!r||!r.success){status.className='mt-3 text-xs text-red-400';status.textContent=(r&&(r.detail||r.error))||'Scan failed';return;}
+  status.className='mt-3 text-xs text-green-400';
+  status.textContent=`Completed scan #${r.data.scan.id}: ${r.data.finding_count} finding(s).`;
+  renderCspmRisk(r.data.risk_score);
+  await Promise.all([loadCspmFindings(), loadCspmScans()]);
+}
+
+async function loadCspmRisk(){
+  const r=await api('/cspm/risk');
+  if(r&&r.success)renderCspmRisk(r.data);
+}
+
+function renderCspmRisk(risk){
+  document.getElementById('cspmRiskScore').textContent=Math.round(risk.normalized_score||0);
+  const counts=risk.counts_by_severity||{};
+  const colors={HIGH:'bg-red-950 border-red-800 text-red-300',MEDIUM:'bg-amber-950 border-amber-800 text-amber-300',LOW:'bg-blue-950 border-blue-800 text-blue-300',INFO:'bg-gray-800 border-gray-700 text-gray-300'};
+  document.getElementById('cspmSeveritySummary').innerHTML=['HIGH','MEDIUM','LOW','INFO'].map(s=>`
+    <div class="border rounded p-2 ${colors[s]}"><div class="font-bold">${counts[s]||0}</div><div class="text-[10px]">${s}</div></div>`).join('');
+}
+
+async function loadCspmFindings(){
+  const params=new URLSearchParams();
+  const sev=document.getElementById('cspmSeverityFilter')?.value;
+  const svc=document.getElementById('cspmServiceFilter')?.value;
+  const st=document.getElementById('cspmStatusFilter')?.value;
+  if(sev)params.set('severity',sev); if(svc)params.set('service',svc); if(st)params.set('status',st);
+  const r=await api('/cspm/findings'+(params.toString()?`?${params}`:''));
+  if(!r||!r.success)return;
+  cspmFindings=r.data;
+  renderCspmFindings();
+}
+
+function renderCspmFindings(){
+  const sevColors={HIGH:'text-red-400',MEDIUM:'text-amber-400',LOW:'text-blue-400',INFO:'text-gray-400'};
+  const canChange=canRunCspm();
+  document.getElementById('cspmFindingsTable').innerHTML=cspmFindings.map(f=>`
+    <tr class="hover:bg-gray-800/30">
+      <td class="py-2 pr-2 ${sevColors[f.severity]||'text-gray-300'} font-bold">${f.severity}</td>
+      <td class="py-2 pr-2 text-blue-300">${f.service}</td>
+      <td class="py-2 pr-2 text-gray-400 max-w-[180px] truncate" title="${f.resource_id}">${f.resource_id}</td>
+      <td class="py-2 pr-2 text-gray-200 max-w-md truncate" title="${f.title}">${f.title}</td>
+      <td class="py-2 pr-2 text-gray-400">${f.status}</td>
+      <td class="py-2 pr-2">
+        <button onclick="openFindingModal(${f.id})" class="text-blue-400 hover:text-blue-300 mr-2">Details</button>
+        ${canChange&&f.status==='open'?`<button onclick="setFindingStatus(${f.id},'resolved')" class="text-green-400 hover:text-green-300">Resolve</button>`:''}
+      </td>
+    </tr>`).join('') || '<tr><td class="py-4 text-gray-500" colspan="6">No findings.</td></tr>';
+}
+
+function openFindingModal(id){
+  const f=cspmFindings.find(x=>x.id===id); if(!f)return;
+  document.getElementById('findingModalTitle').textContent=f.title;
+  document.getElementById('findingModalMeta').textContent=`${f.severity} · ${f.service} · ${f.resource_type} · ${f.resource_id}`;
+  document.getElementById('findingModalDescription').textContent=f.description;
+  document.getElementById('findingModalRecommendation').textContent=f.recommendation;
+  let evidence={}; try{evidence=JSON.parse(f.evidence_json||'{}');}catch(e){}
+  document.getElementById('findingModalEvidence').textContent=JSON.stringify(evidence,null,2);
+  document.getElementById('findingModal').classList.remove('hidden');
+  document.getElementById('findingModal').classList.add('flex');
+}
+function closeFindingModal(){document.getElementById('findingModal').classList.add('hidden');document.getElementById('findingModal').classList.remove('flex');}
+
+async function setFindingStatus(id,status){
+  const r=await api(`/cspm/findings/${id}/status`,{method:'POST',body:JSON.stringify({status})});
+  if(r&&r.success){renderCspmRisk(r.data.risk_score);loadCspmFindings();}
+}
+
+async function loadCspmScans(){
+  const r=await api('/cspm/scans');
+  if(!r||!r.success)return;
+  document.getElementById('cspmScanHistory').innerHTML=r.data.map(s=>`
+    <div class="bg-gray-800 border border-gray-700 rounded p-2">
+      <div class="flex items-center justify-between"><span class="text-white">#${s.id} ${s.scan_type}</span><span class="${s.status==='completed'?'text-green-400':s.status==='failed'?'text-red-400':'text-amber-400'}">${s.status}</span></div>
+      <div class="text-gray-500 mt-0.5">${new Date(s.started_at).toLocaleString()} · ${s.finding_count} findings</div>
+      <div class="text-gray-500">H:${s.high_count} M:${s.medium_count} L:${s.low_count}</div>
+    </div>`).join('') || '<p class="text-gray-600">No scans yet.</p>';
+}
+
+function exportCspmReport(fmt){
+  fetch(BASE+`/cspm/report?format=${fmt}`,{headers:{'Authorization':'Bearer '+token}})
+    .then(r=>r.blob()).then(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`cspm-findings.${fmt}`;a.click();});
+}
+
+function onCspmEvent(message){
+  const status=document.getElementById('cspmScanStatus');
+  if(message.type==='cspm_scan_started'&&status)status.textContent='CSPM scan started...';
+  if(message.type==='cspm_scan_completed'&&status){status.className='mt-3 text-xs text-green-400';status.textContent=`Scan completed with ${message.data.finding_count} finding(s).`;}
+  if(message.type==='cspm_risk_updated')renderCspmRisk(message.data);
 }
 
 // ════════════════════════════════════════════════════════════
