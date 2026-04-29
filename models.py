@@ -41,6 +41,19 @@ class SeverityEnum(str, enum.Enum):
     high   = "HIGH"
 
 
+class CSPMScanStatusEnum(str, enum.Enum):
+    pending = "pending"
+    running = "running"
+    completed = "completed"
+    failed = "failed"
+
+
+class CSPMFindingStatusEnum(str, enum.Enum):
+    open = "open"
+    resolved = "resolved"
+    ignored = "ignored"
+
+
 class ConditionTypeEnum(str, enum.Enum):
     require_mfa  = "require_mfa"   # session must be MFA-verified
     ip_allowlist = "ip_allowlist"  # comma-separated CIDRs / exact IPs
@@ -279,3 +292,70 @@ class RiskSnapshot(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     score: Mapped[float] = mapped_column(Float, nullable=False)
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+# ---------------------------------------------------------------------------
+# AWS CSPM models
+# ---------------------------------------------------------------------------
+
+class CloudAccount(Base):
+    """Read-only AWS account identity validated through STS GetCallerIdentity."""
+    __tablename__ = "cloud_accounts"
+    __table_args__ = (UniqueConstraint("account_id", "region", name="uq_cloud_account_region"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    account_id: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    arn: Mapped[str] = mapped_column(String(512), nullable=False)
+    region: Mapped[str] = mapped_column(String(64), nullable=False)
+    name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_validated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    scans: Mapped[List["CSPMScan"]] = relationship("CSPMScan", back_populates="cloud_account")
+    findings: Mapped[List["CSPMFinding"]] = relationship("CSPMFinding", back_populates="cloud_account")
+
+
+class CSPMScan(Base):
+    """One persisted AWS CSPM scan execution."""
+    __tablename__ = "cspm_scans"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    cloud_account_id: Mapped[int] = mapped_column(ForeignKey("cloud_accounts.id"), nullable=False, index=True)
+    scan_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(SAEnum(CSPMScanStatusEnum), default=CSPMScanStatusEnum.pending, nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    finding_count: Mapped[int] = mapped_column(Integer, default=0)
+    high_count: Mapped[int] = mapped_column(Integer, default=0)
+    medium_count: Mapped[int] = mapped_column(Integer, default=0)
+    low_count: Mapped[int] = mapped_column(Integer, default=0)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    cloud_account: Mapped["CloudAccount"] = relationship("CloudAccount", back_populates="scans")
+    findings: Mapped[List["CSPMFinding"]] = relationship(
+        "CSPMFinding", back_populates="scan", cascade="all, delete-orphan"
+    )
+
+
+class CSPMFinding(Base):
+    """Normalized cloud security finding produced by an AWS CSPM scan."""
+    __tablename__ = "cspm_findings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    scan_id: Mapped[int] = mapped_column(ForeignKey("cspm_scans.id"), nullable=False, index=True)
+    cloud_account_id: Mapped[int] = mapped_column(ForeignKey("cloud_accounts.id"), nullable=False, index=True)
+    provider: Mapped[str] = mapped_column(String(32), default="aws", nullable=False)
+    service: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    resource_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    resource_id: Mapped[str] = mapped_column(String(512), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    severity: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    recommendation: Mapped[str] = mapped_column(Text, nullable=False)
+    evidence_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    compliance_tags_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    status: Mapped[str] = mapped_column(SAEnum(CSPMFindingStatusEnum), default=CSPMFindingStatusEnum.open, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    scan: Mapped["CSPMScan"] = relationship("CSPMScan", back_populates="findings")
+    cloud_account: Mapped["CloudAccount"] = relationship("CloudAccount", back_populates="findings")
